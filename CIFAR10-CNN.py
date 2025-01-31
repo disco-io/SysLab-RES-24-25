@@ -60,6 +60,8 @@ def plot_samples():
     plt.show()
 
 
-load_data()
+def CNN():
+    return
 
-plot_samples()
+
+load_data()
