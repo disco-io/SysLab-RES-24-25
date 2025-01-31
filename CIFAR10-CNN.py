@@ -9,7 +9,6 @@ import numpy as np
 import pickle
 import os
 
-# Define dataset paths and labels
 DATA_PATH = "cifar-10-batches-py"
 CHECKPOINT_FILE = "checkpoint.pkl"
 LABELS = [
@@ -50,12 +49,13 @@ def load_data():
     y_test = np.array(batch[b"labels"])
 
 
-def save_checkpoint(model, optimizer, epoch, filename=CHECKPOINT_FILE):
-    """Save model and optimizer state."""
+def save_checkpoint(model, optimizer, epoch, train_losses, filename=CHECKPOINT_FILE):
+    """Save model, optimizer state, and training loss history."""
     checkpoint = {
         "epoch": epoch,
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
+        "train_losses": train_losses,  # Save training loss history
     }
     with open(filename, "wb") as f:
         pickle.dump(checkpoint, f)
@@ -63,15 +63,17 @@ def save_checkpoint(model, optimizer, epoch, filename=CHECKPOINT_FILE):
 
 
 def load_checkpoint(model, optimizer, filename=CHECKPOINT_FILE):
-    """Load model and optimizer state from checkpoint."""
+    """Load model, optimizer state, and training loss history."""
     if os.path.exists(filename):
         with open(filename, "rb") as f:
             checkpoint = pickle.load(f)
         model.load_state_dict(checkpoint["model_state_dict"])
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         print(f"Resuming from epoch {checkpoint['epoch']}!")
-        return checkpoint["epoch"]
-    return 0  # Start from epoch 0 if no checkpoint exists
+        return checkpoint["epoch"], checkpoint.get(
+            "train_losses", []
+        )  # Load training loss history if available
+    return 0, []  # Start from scratch if no checkpoint exists
 
 
 def plot_samples():
@@ -88,11 +90,9 @@ def plot_samples():
     plt.show()
 
 
-# Load data and plot samples
 load_data()
-plot_samples()
 
-# Convert NumPy arrays to PyTorch tensors
+# Convert np arrays to PyTorch tensors
 X_train_tensor = (
     torch.tensor(X_train.transpose(0, 3, 1, 2), dtype=torch.float32) / 255.0
 )
@@ -100,14 +100,14 @@ y_train_tensor = torch.tensor(y_train, dtype=torch.long)
 X_test_tensor = torch.tensor(X_test.transpose(0, 3, 1, 2), dtype=torch.float32) / 255.0
 y_test_tensor = torch.tensor(y_test, dtype=torch.long)
 
-# Create DataLoader for training and testing
+# Dataloaders
 train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
 test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
 train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
 
 
-# Define CNN Model
+# CNN model
 class SimpleCNN(nn.Module):
     def __init__(self):
         super(SimpleCNN, self).__init__()
@@ -134,9 +134,8 @@ def train_model(model, train_loader, num_epochs=10):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    start_epoch = load_checkpoint(model, optimizer)
+    start_epoch, train_losses = load_checkpoint(model, optimizer)
 
-    train_losses = []
     print("Training started... (˶˃ ᵕ ˂˶)\n")
 
     for epoch in range(start_epoch, num_epochs):
@@ -153,20 +152,24 @@ def train_model(model, train_loader, num_epochs=10):
             running_loss += loss.item()
 
         avg_loss = running_loss / len(train_loader)
-        train_losses.append(avg_loss)
+        train_losses.append(avg_loss)  # Append to restored loss history
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
 
         if (epoch + 1) % 5 == 0:
-            save_checkpoint(model, optimizer, epoch + 1)
+            save_checkpoint(model, optimizer, epoch + 1, train_losses)
 
-    print("Training completed!\n")
+    print("Training completed! ◝(ᵔ ᗜ ᵔ)◜ \n")
     return train_losses
 
 
 def plot_training_loss(train_losses, num_epochs):
     plt.figure(figsize=(8, 5))
     plt.plot(
-        range(1, num_epochs + 1), train_losses, marker="o", linestyle="-", color="blue"
+        range(1, len(train_losses) + 1),
+        train_losses,
+        marker="o",
+        linestyle="-",
+        color="blue",
     )
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
@@ -194,24 +197,22 @@ def evaluate_model(model, test_loader):
             correct += (predicted == labels).sum().item()
 
     accuracy = 100 * correct / total
-    print(f"Test Accuracy: {accuracy:.2f}%")
+    print(f"Test accuracy: {accuracy:.2f}%")
 
 
 def main():
     model = SimpleCNN()
 
     user_choice = (
-        input("Do you want to resume training from the last checkpoint? (yes/no): ")
-        .strip()
-        .lower()
+        input("Resume training from the last checkpoint? (y/n): ").strip().lower()
     )
-    if user_choice == "no":
-        print("Starting training from scratch...")
+    if user_choice == "n":
+        print("Starting over from scratch...")
         if os.path.exists(CHECKPOINT_FILE):
             os.remove(CHECKPOINT_FILE)
 
     train_losses = train_model(model, train_loader, num_epochs=10)
-    plot_training_loss(train_losses, num_epochs=10)
+    plot_training_loss(train_losses, num_epochs=len(train_losses))
     evaluate_model(model, test_loader)
 
 
