@@ -24,7 +24,6 @@ LABELS = [
     "truck",
 ]
 
-# Initialize dataset variables
 X_train, y_train, X_test, y_test = [], [], [], []
 
 
@@ -55,7 +54,7 @@ def save_checkpoint(model, optimizer, epoch, train_losses, filename=CHECKPOINT_F
         "epoch": epoch,
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
-        "train_losses": train_losses,  # Save training loss history
+        "train_losses": train_losses,
     }
     with open(filename, "wb") as f:
         pickle.dump(checkpoint, f)
@@ -63,17 +62,16 @@ def save_checkpoint(model, optimizer, epoch, train_losses, filename=CHECKPOINT_F
 
 
 def load_checkpoint(model, optimizer, filename=CHECKPOINT_FILE):
-    """Load model, optimizer state, and training loss history."""
     if os.path.exists(filename):
         with open(filename, "rb") as f:
             checkpoint = pickle.load(f)
         model.load_state_dict(checkpoint["model_state_dict"])
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        print(f"Resuming from epoch {checkpoint['epoch']}!")
-        return checkpoint["epoch"], checkpoint.get(
-            "train_losses", []
-        )  # Load training loss history if available
-    return 0, []  # Start from scratch if no checkpoint exists
+        epoch = checkpoint["epoch"]
+        train_losses = checkpoint.get("train_losses", [])
+        print(f"Resuming from epoch {epoch}!")
+        return epoch, train_losses
+    return 0, []  # start from scratch if no checkpoint exists
 
 
 def plot_samples():
@@ -92,7 +90,6 @@ def plot_samples():
 
 load_data()
 
-# Convert np arrays to PyTorch tensors
 X_train_tensor = (
     torch.tensor(X_train.transpose(0, 3, 1, 2), dtype=torch.float32) / 255.0
 )
@@ -100,7 +97,7 @@ y_train_tensor = torch.tensor(y_train, dtype=torch.long)
 X_test_tensor = torch.tensor(X_test.transpose(0, 3, 1, 2), dtype=torch.float32) / 255.0
 y_test_tensor = torch.tensor(y_test, dtype=torch.long)
 
-# Dataloaders
+# dataloaders
 train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
 test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
 train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
@@ -128,7 +125,7 @@ class SimpleCNN(nn.Module):
         return x
 
 
-def train_model(model, train_loader, num_epochs=10):
+def train_model(model, train_loader, num_epochs):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     criterion = nn.CrossEntropyLoss()
@@ -140,6 +137,7 @@ def train_model(model, train_loader, num_epochs=10):
 
     for epoch in range(start_epoch, num_epochs):
         running_loss = 0.0
+        model.train()  # Set model to training mode
         for images, labels in train_loader:
             images, labels = images.to(device), labels.to(device)
 
@@ -152,17 +150,17 @@ def train_model(model, train_loader, num_epochs=10):
             running_loss += loss.item()
 
         avg_loss = running_loss / len(train_loader)
-        train_losses.append(avg_loss)  # Append to restored loss history
+        train_losses.append(avg_loss)
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
 
-        if (epoch + 1) % 5 == 0:
-            save_checkpoint(model, optimizer, epoch + 1, train_losses)
+        # Always save checkpoint at the end of every epoch
+        save_checkpoint(model, optimizer, epoch + 1, train_losses)
 
     print("Training completed! ◝(ᵔ ᗜ ᵔ)◜ \n")
     return train_losses
 
 
-def plot_training_loss(train_losses, num_epochs):
+def plot_training_loss(train_losses):
     plt.figure(figsize=(8, 5))
     plt.plot(
         range(1, len(train_losses) + 1),
@@ -177,11 +175,9 @@ def plot_training_loss(train_losses, num_epochs):
     plt.grid()
     plt.show()
     plt.savefig("training_progress.png")
-    plt.pause(3)
-    plt.close()
 
 
-def evaluate_model(model, test_loader):
+def testing(model, test_loader):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     model.eval()
@@ -211,9 +207,9 @@ def main():
         if os.path.exists(CHECKPOINT_FILE):
             os.remove(CHECKPOINT_FILE)
 
-    train_losses = train_model(model, train_loader, num_epochs=10)
-    plot_training_loss(train_losses, num_epochs=len(train_losses))
-    evaluate_model(model, test_loader)
+    train_losses = train_model(model, train_loader, num_epochs=20)
+    plot_training_loss(train_losses)
+    testing(model, test_loader)
 
 
 main()
