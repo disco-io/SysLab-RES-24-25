@@ -163,7 +163,7 @@ def train_model(model, train_loader, num_epochs):
 
     start_epoch, train_losses = load_checkpoint(model, optimizer)
 
-    print("Training started... (˶˃ ᵕ ˂˶)\n")
+    print("Training started...\n")
 
     for epoch in range(start_epoch, num_epochs):
         running_loss = 0.0
@@ -234,7 +234,7 @@ def main():
         if os.path.exists(CHECKPOINT_FILE):
             os.remove(CHECKPOINT_FILE)
 
-    train_losses = train_model(model, train_loader, num_epochs=35)
+    train_losses = train_model(model, train_loader, num_epochs=20)
     plot_training_loss(train_losses)
     testing(model, test_loader)
 
