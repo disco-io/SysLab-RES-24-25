@@ -133,29 +133,36 @@ def dither(IMG, palette):
 
 
 X_train, y_train = load_data()
-img_array = X_train[0]
-label = y_train[0]
-print("Label:", LABELS[label])
 
-IMG = np_to_pil(img_array)
-PIX_LIST = IMG.load()
+# Create a figure for plotting 20 images
+fig, axes = plt.subplots(20, 3, figsize=(9, 60))
+axes = axes.flatten()
 
-palette = k_means(IMG.copy())
+for i in range(20):
+    img_array = X_train[i]
+    label = y_train[i]
+    print("Label:", LABELS[label])
 
-quantized_image = IMG.copy()
-change_image(palette, quantized_image.load(), quantized_image)
-dithered_image = IMG.copy()
-dithered_image = dither(dithered_image, palette)
+    IMG = np_to_pil(img_array)
 
-# plot
-fig, axes = plt.subplots(1, 3, figsize=(9, 3))
-axes[0].imshow(IMG)
-axes[0].set_title("Original")
-axes[1].imshow(quantized_image)
-axes[1].set_title("Quantized (Your K-means)")
-axes[2].imshow(dithered_image)
-axes[2].set_title("Dithered (Your FS)")
-for ax in axes:
-    ax.axis("off")
+    palette = k_means(IMG.copy())
+
+    quantized_image = IMG.copy()
+    change_image(palette, quantized_image.load(), quantized_image)
+
+    dithered_image = IMG.copy()
+    dithered_image = dither(dithered_image, palette)
+
+    axes[i * 3].imshow(IMG)
+    axes[i * 3].set_title(f"Original {LABELS[label]}")
+    axes[i * 3 + 1].imshow(quantized_image)
+    axes[i * 3 + 1].set_title(f"Quantized {LABELS[label]}")
+    axes[i * 3 + 2].imshow(dithered_image)
+    axes[i * 3 + 2].set_title(f"Dithered {LABELS[label]}")
+
+    # Turn off axes for all subplots
+    for ax in axes:
+        ax.axis("off")
+
 plt.tight_layout()
 plt.show()
