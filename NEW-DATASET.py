@@ -54,6 +54,8 @@ def distance(pix, mean):
 
 def new_mean(group):
     n = len(group)
+    if n == 0:
+        return (0, 0, 0)
     r = sum(p[0] for p in group) / n
     g = sum(p[1] for p in group) / n
     b = sum(p[2] for p in group) / n
