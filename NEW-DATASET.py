@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import random
 import math
 from PIL import Image
+from time import perf_counter
 
 DATA_PATH = "cifar-10-batches-py"
 LABELS = [
@@ -132,16 +133,14 @@ def dither(IMG, palette):
     return IMG
 
 
+# MAIN EXECUTION
 X_train, y_train = load_data()
 
-# Create a figure for plotting 20 images
-fig, axes = plt.subplots(20, 3, figsize=(9, 60))
-axes = axes.flatten()
+start = perf_counter()
 
-for i in range(20):
+for i in range(len(X_train)):
     img_array = X_train[i]
     label = y_train[i]
-    print("Label:", LABELS[label])
 
     IMG = np_to_pil(img_array)
 
@@ -153,16 +152,11 @@ for i in range(20):
     dithered_image = IMG.copy()
     dithered_image = dither(dithered_image, palette)
 
-    axes[i * 3].imshow(IMG)
-    axes[i * 3].set_title(f"Original {LABELS[label]}")
-    axes[i * 3 + 1].imshow(quantized_image)
-    axes[i * 3 + 1].set_title(f"Quantized {LABELS[label]}")
-    axes[i * 3 + 2].imshow(dithered_image)
-    axes[i * 3 + 2].set_title(f"Dithered {LABELS[label]}")
+    if (i + 1) % 100 == 0:
+        end = perf_counter()
+        print(f"[Sanity Check] Processed {i + 1} images")
+        print(f"Label: {LABELS[label]}")
+        print(f"Sample palette colors: {palette[:3]}")
+        print(end - start)
 
-    # Turn off axes for all subplots
-    for ax in axes:
-        ax.axis("off")
-
-plt.tight_layout()
-plt.show()
+print("Done processing all images.")

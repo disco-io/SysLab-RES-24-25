@@ -191,18 +191,23 @@ def train_model(model, train_loader, num_epochs):
 
 
 def plot_training_loss(train_losses):
-    plt.figure(figsize=(8, 5))
-    plt.plot(
+    plt.figure(figsize=(5, 5))
+    ax = plt.gca()
+    ax.plot(
         range(1, len(train_losses) + 1),
         train_losses,
         marker="o",
         linestyle="-",
-        color="blue",
+        color="#e797e0",
     )
-    plt.xlabel("Epochs")
-    plt.ylabel("Loss")
-    plt.title("Training Loss Over Epochs")
-    plt.grid()
+    ax.set_xlabel("Epochs", color="#913989")
+    ax.set_ylabel("Loss", color="#913989")
+    ax.set_title("Training Loss Over Epochs", color="#913989")
+    for spine in ax.spines.values():
+        spine.set_color("#913989")
+    ax.tick_params(axis="x", colors="#913989")
+    ax.tick_params(axis="y", colors="#913989")
+    ax.grid()
     plt.show()
 
 
