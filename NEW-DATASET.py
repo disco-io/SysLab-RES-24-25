@@ -1,49 +1,14 @@
 import os
 import pickle
 import numpy as np
-import matplotlib.pyplot as plt
 import random
 import math
 from PIL import Image
-from time import perf_counter
+from tqdm import tqdm  # progress bar
 
 DATA_PATH = "cifar-10-batches-py"
-LABELS = [
-    "airplane",
-    "automobile",
-    "bird",
-    "cat",
-    "deer",
-    "dog",
-    "frog",
-    "horse",
-    "ship",
-    "truck",
-]
-
-
-def load_data():
-    X_train, y_train = [], []
-    for i in range(1, 6):
-        file_path = os.path.join(DATA_PATH, f"data_batch_{i}")
-        with open(file_path, "rb") as file:
-            batch = pickle.load(file, encoding="bytes")
-        X_train.append(batch[b"data"].reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1))
-        y_train.append(np.array(batch[b"labels"]))
-    X_train = np.concatenate(X_train)
-    y_train = np.concatenate(y_train)
-    return X_train, y_train
-
-
-def np_to_pil(img_np):
-    return Image.fromarray(img_np)
-
-
-def pil_to_np(img_pil):
-    return np.array(img_pil)
-
-
-# DITHERING & K-MEANS FUNCTIONS
+OUT_PATH = "cifar-10-custom"
+os.makedirs(OUT_PATH, exist_ok=True)
 
 K = 27
 
@@ -62,11 +27,11 @@ def new_mean(group):
     return (r, g, b)
 
 
-def pix_freq(PIX_LIST, IMG):
+def pix_freq(pix_list, img):
     freq = {}
-    for i in range(IMG.width):
-        for j in range(IMG.height):
-            pix = PIX_LIST[i, j]
+    for i in range(img.width):
+        for j in range(img.height):
+            pix = pix_list[i, j]
             freq[pix] = freq.get(pix, 0) + 1
     return freq
 
@@ -81,17 +46,17 @@ def classify(means, pixel_freq, curr_groups):
     return new_groups, any(new_groups[k] != curr_groups.get(k, []) for k in range(K))
 
 
-def change_image(means, PIX_LIST, IMG):
-    for i in range(IMG.width):
-        for j in range(IMG.height):
-            pix = PIX_LIST[i, j]
+def change_image(means, pix_list, img):
+    for i in range(img.width):
+        for j in range(img.height):
+            pix = pix_list[i, j]
             closest_k = min(range(K), key=lambda k: distance(pix, means[k]))
-            PIX_LIST[i, j] = tuple(map(int, means[closest_k]))
+            pix_list[i, j] = tuple(map(int, means[closest_k]))
 
 
-def k_means(IMG):
-    PIX_LIST = IMG.load()
-    pixel_freq_map = pix_freq(PIX_LIST, IMG)
+def k_means(img):
+    pix_list = img.load()
+    pixel_freq_map = pix_freq(pix_list, img)
     means = random.sample(list(pixel_freq_map.keys()), K)
     groups = {}
     while True:
@@ -108,9 +73,9 @@ def closest_color(pixel, palette):
     return min(palette, key=lambda c: distance(pixel, c))
 
 
-def dither(IMG, palette):
-    pix = IMG.load()
-    width, height = IMG.size
+def dither(img, palette):
+    pix = img.load()
+    width, height = img.size
     for y in range(height):
         for x in range(width):
             old_pix = pix[x, y]
@@ -132,33 +97,57 @@ def dither(IMG, palette):
             apply_error(0, 1, 5 / 16)
             apply_error(1, 1, 1 / 16)
 
-    return IMG
+    return img
 
 
-# MAIN EXECUTION
-X_train, y_train = load_data()
+def process_and_save_batch(input_file, output_file):
+    with open(input_file, "rb") as f:
+        batch = pickle.load(f, encoding="bytes")
 
-start = perf_counter()
+    data = batch[b"data"]
+    labels = batch[b"labels"]
+    filenames = batch[b"filenames"]
 
-for i in range(len(X_train)):
-    img_array = X_train[i]
-    label = y_train[i]
+    new_data = []
 
-    IMG = np_to_pil(img_array)
+    for i in tqdm(range(len(data)), desc=f"Processing {os.path.basename(input_file)}"):
+        if i % 100 == 0:
+            print(f"  Sanity check: {i}/{len(data)} images processed.")
 
-    palette = k_means(IMG.copy())
+        img = data[i].reshape(3, 32, 32).transpose(1, 2, 0)
+        pil_img = Image.fromarray(img)
 
-    quantized_image = IMG.copy()
-    change_image(palette, quantized_image.load(), quantized_image)
+        palette = k_means(pil_img.copy())
+        quantized = pil_img.copy()
+        change_image(palette, quantized.load(), quantized)
 
-    dithered_image = IMG.copy()
-    dithered_image = dither(dithered_image, palette)
+        dithered = dither(quantized.copy(), palette)
 
-    if (i + 1) % 100 == 0:
-        end = perf_counter()
-        print(f"[Sanity Check] Processed {i + 1} images")
-        print(f"Label: {LABELS[label]}")
-        print(f"Sample palette colors: {palette[:3]}")
-        print(end - start)
+        dithered_np = np.array(dithered).transpose(2, 0, 1).reshape(-1)
+        new_data.append(dithered_np)
 
-print("Done processing all images.")
+    out_batch = {
+        b"data": np.stack(new_data),
+        b"labels": labels,
+        b"filenames": filenames,
+        b"batch_label": batch[b"batch_label"],
+    }
+
+    with open(output_file, "wb") as f:
+        pickle.dump(out_batch, f)
+
+
+# Process training batches
+for i in range(1, 6):
+    in_file = os.path.join(DATA_PATH, f"data_batch_{i}")
+    out_file = os.path.join(OUT_PATH, f"data_batch_{i}")
+    process_and_save_batch(in_file, out_file)
+
+# Copy test_batch and meta file (unchanged)
+for fname in ["test_batch", "batches.meta"]:
+    in_path = os.path.join(DATA_PATH, fname)
+    out_path = os.path.join(OUT_PATH, fname)
+    with open(in_path, "rb") as fin, open(out_path, "wb") as fout:
+        fout.write(fin.read())
+
+print("All batches processed and saved to 'cifar-10-custom'")

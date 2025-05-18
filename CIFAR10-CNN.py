@@ -8,8 +8,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 import os
+from time import perf_counter
 
 DATA_PATH = "cifar-10-batches-py"
+# DATA_PATH = "cifar-10-custom"
+
 CHECKPOINT_FILE = "checkpoint.pkl"
 LABELS = [
     "airplane",
