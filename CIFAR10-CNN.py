@@ -169,8 +169,9 @@ def train_model(model, train_loader, num_epochs):
     print("Training started...\n")
 
     for epoch in range(start_epoch, num_epochs):
+
         running_loss = 0.0
-        model.train()  # set model to training mode
+        model.train()
         for images, labels in train_loader:
             images, labels = images.to(device), labels.to(device)
 
@@ -184,9 +185,7 @@ def train_model(model, train_loader, num_epochs):
 
         avg_loss = running_loss / len(train_loader)
         train_losses.append(avg_loss)
-        print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
 
-        # always save checkpoint at the end of every epoch
         save_checkpoint(model, optimizer, epoch + 1, train_losses)
 
     print("Training completed! ◝(ᵔ ᗜ ᵔ)◜ \n")
@@ -242,9 +241,19 @@ def main():
         if os.path.exists(CHECKPOINT_FILE):
             os.remove(CHECKPOINT_FILE)
 
+    begin = perf_counter()
     train_losses = train_model(model, train_loader, num_epochs=20)
+    end = perf_counter()
+    train_duration = end - begin
+    print(f"Train Time: {train_duration:.2f}s")
+
     plot_training_loss(train_losses)
+
+    start = perf_counter()
     testing(model, test_loader)
+    stop = perf_counter()
+    test_duration = stop - start
+    print(f"Test Time: {test_duration:.2f}s")
 
 
 main()
