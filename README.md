@@ -2,13 +2,10 @@
 <br>
 <h2>TJHSST Computer Systems Research Lab with Dr. Selma Yilmaz </h2>
 <br>
-Applied vector quantization and Floyd-Steinberg dithering to reduce the computational load of image recognition.
-Maintains high classification accuracy while improving efficiency.
-Aiming to optimize neural network inputs for low-power devices like surveillance and thermal cameras.
-Final result is a complete color-quantized version of CIFAR-10 with public licensing for use.
+Convolutional Neural Networks (CNNs) are highly effective for image classification but often require significant computational resources, making them difficult to deploy on low-power devices. This project introduces Mini Color NN, a novel approach that combines k-means vector quantization and Floyd-Steinberg dithering to reduce the color complexity of images in the CIFAR-10 dataset while preserving critical visual information. The resulting Mini Color CIFAR-10 dataset reduces storage requirements by 1.7× and accelerates training time by 1.3×, with only a minor drop in classification accuracy (from 92.88% to 92.01%). These results demonstrate that significant computational efficiency can be achieved without compromising CNN performance, supporting broader deployment of deep learning models in edge computing and resource-constrained environments. This work contributes a publicly available, lightweight dataset and offers a practical preprocessing strategy for efficient image-based machine learning.
 
 <h2> How to Run Code</h2>
 <br>
-After cloning and cd into the repository, run the CIFAR10-CNN.py and wait a few minutes for training to begin. 
+After cloning and cd into the repository, run the CIFAR10-CNN.py and wait a few minutes for training to begin. To use the Original Dataset, set DATA_PATH to "cifar-10-batches-py" or "cifar-10-custom" for the Mini Color Version.
 <br>
 Quit the program at any time to view training progress across epochs. To resume, run the python file again and follow instructions in the terminal.
